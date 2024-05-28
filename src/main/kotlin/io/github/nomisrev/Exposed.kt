@@ -11,7 +11,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 
 context(AutoCloseScope)
 @ExperimentalStdlibApi
-fun postgres() =
+fun postgres(): PostgreSQLContainer<*> =
     install(
         PostgreSQLContainer("postgres:13.15")
             .also { it.start() }
@@ -19,7 +19,7 @@ fun postgres() =
 
 context(AutoCloseScope)
 @ExperimentalStdlibApi
-fun dataSource(container: PostgreSQLContainer<*>) =
+private fun dataSource(container: PostgreSQLContainer<*>): HikariDataSource =
     install(
         HikariDataSource(HikariConfig().apply {
             jdbcUrl = container.jdbcUrl
@@ -31,7 +31,7 @@ fun dataSource(container: PostgreSQLContainer<*>) =
 
 context(AutoCloseScope)
 @ExperimentalStdlibApi
-fun database(container: PostgreSQLContainer<*>) =
+fun database(container: PostgreSQLContainer<*>): Database =
     autoClose({
         Database.connect(dataSource(container))
     }) { db, _ -> TransactionManager.closeAndUnregister(db) }

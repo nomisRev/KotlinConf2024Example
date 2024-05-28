@@ -34,7 +34,7 @@ fun insertUser(username: String): User =
         val id = Users.insert {
             it[Users.username] = username
         } get Users.id
-        User(id.value)
+        User(id.value, username)
     } catch (e: ExposedSQLException) {
         if (e.sqlState == UNIQUE_VIOLATION.state) raise(UserExists(username))
         else throw e
@@ -54,6 +54,7 @@ fun PaymentSaasException.toPaymentError(): PaymentError =
 context(Raise<PaymentError>)
 fun User.receivePayment(): Unit =
     try {
+        throw PaymentSaasException()
         println("User $id attempting to pay using payment service")
     } catch (e: PaymentSaasException) {
         raise(e.toPaymentError())
@@ -64,7 +65,7 @@ fun User.receivePayment(): Unit =
  * into an end-to-end feature.
  */
 context(Raise<UserError>, Raise<PaymentError>, Transaction)
-fun registerPremiumUser(request: ApplicationCall) {
+suspend fun registerPremiumUser(request: ApplicationCall) {
     val name = request.username()
     val user = insertUser(name)
     user.receivePayment()
@@ -78,14 +79,14 @@ fun registerPremiumUser(request: ApplicationCall) {
  */
 context(Routing)
 fun premiumRoute() = post("/premium/{username}") {
-    newSuspendedTransaction() {
+    recover({
         recover({
-            recover({
+            newSuspendedTransaction {
                 registerPremiumUser(call)
                 call.respond(HttpStatusCode.Created)
-            }) { e: UserError -> e.respond() }
-        }) { e: PaymentError -> e.respond() }
-    }
+            }
+        }) { e: UserError -> e.respond() }
+    }) { e: PaymentError -> e.respond() }
 }
 
 /** Typed Ktor error handler for [UserError]. */

@@ -10,7 +10,7 @@ import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
-@OptIn(ExperimentalStdlibApi::class)
+@ExperimentalStdlibApi
 fun main() {
     autoCloseScope {
         val container = postgres()

@@ -1,6 +1,5 @@
 package io.github.nomisrev.contextparameters
-
-data class User(val id: Long)
+data class User(val id: Long, val username: String)
 
 sealed interface UserError
 data object UsernameMissing : UserError

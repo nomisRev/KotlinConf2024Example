@@ -63,12 +63,12 @@ fun Raise<PaymentError>.receivePayment(user: User): Unit =
  * Service layer function which combines all features,
  * into an end-to-end feature.
  */
-context(Raise<UserRegistrationError>)
-fun Transaction.registerPremiumUser(request: ApplicationCall) {
-    val name = username(request)
-    val user = insertUser(name)
-    receivePayment(user)
-}
+suspend fun Raise<UserRegistrationError>.registerPremiumUser(request: ApplicationCall) =
+    newSuspendedTransaction {
+        val name = username(request)
+        val user = insertUser(name)
+        receivePayment(user)
+    }
 
 /**
  * Actual route handler that will be installed in Ktor,
@@ -76,8 +76,7 @@ fun Transaction.registerPremiumUser(request: ApplicationCall) {
  * provides all context dependencies,
  * and handles all errors.
  */
-context(Routing)
-fun premiumRoute2() = post("/premium2/{username}") {
+fun Routing.premiumRoute2() = post("/premium2/{username}") {
     newSuspendedTransaction {
         recover({
             registerPremiumUser(call)
@@ -91,10 +90,13 @@ fun UserRegistrationError.toContent(): TextContent =
     when (this) {
         is UserExists ->
             TextContent("Username already exists", Conflict)
+
         UsernameMissing ->
             TextContent("Username already exists", BadRequest)
+
         ExpiredCard ->
             TextContent("Card expired", PaymentRequired)
+
         InsufficientFunds ->
             TextContent("Credit maxed", PaymentRequired)
     }
